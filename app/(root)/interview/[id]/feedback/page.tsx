@@ -1,3 +1,4 @@
+// app/feedback/[id]/page.tsx (Server Component)
 import dayjs from "dayjs";
 import Link from "next/link";
 import Image from "next/image";
@@ -9,6 +10,12 @@ import {
 } from "@/lib/actions/general.action";
 import { Button } from "@/components/ui/button";
 import { getCurrentUser } from "@/lib/actions/auth.action";
+import FeedbackClient from "./FeedbackClient";
+
+
+interface RouteParams {
+  params: Promise<{ id: string }>;
+}
 
 const Feedback = async ({ params }: RouteParams) => {
   const { id } = await params;
@@ -17,21 +24,25 @@ const Feedback = async ({ params }: RouteParams) => {
   const interview = await getInterviewById(id);
   if (!interview) redirect("/");
 
-  const feedback = await getFeedbackByInterviewId({
-    interviewId: id,
-    userId: user?.id!,
-  });
+ if (!user?.id) {
+  throw new Error('User ID is required');
+}
 
+const feedback = await getFeedbackByInterviewId({
+  interviewId: id,
+  userId: user.id,
+});
+  // Pass data to client component
   return (
     <section className="section-feedback">
-      <div className="flex flex-row justify-center">
-        <h1 className="text-4xl font-semibold">
+      <div className="flex flex-row justify-center mb-6">
+        <h1 className="text-4xl font-semibold text-center">
           Feedback on the Interview -{" "}
           <span className="capitalize">{interview.role}</span> Interview
         </h1>
       </div>
 
-      <div className="flex flex-row justify-center ">
+      <div className="flex flex-row justify-center mb-6">
         <div className="flex flex-row gap-5">
           {/* Overall Impression */}
           <div className="flex flex-row gap-2 items-center">
@@ -57,42 +68,16 @@ const Feedback = async ({ params }: RouteParams) => {
         </div>
       </div>
 
-      <hr />
+      <hr className="mb-6" />
 
-      <p>{feedback?.finalAssessment}</p>
+      {/* Client-side interactive feedback component */}
+      <FeedbackClient 
+        feedback={feedback} 
+        interviewId={id}
+        interviewRole={interview.role}
+      />
 
-      {/* Interview Breakdown */}
-      <div className="flex flex-col gap-4">
-        <h2>Breakdown of the Interview:</h2>
-        {feedback?.categoryScores?.map((category, index) => (
-          <div key={index}>
-            <p className="font-bold">
-              {index + 1}. {category.name} ({category.score}/100)
-            </p>
-            <p>{category.comment}</p>
-          </div>
-        ))}
-      </div>
-
-      <div className="flex flex-col gap-3">
-        <h3>Strengths</h3>
-        <ul>
-          {feedback?.strengths?.map((strength, index) => (
-            <li key={index}>{strength}</li>
-          ))}
-        </ul>
-      </div>
-
-      <div className="flex flex-col gap-3">
-        <h3>Areas for Improvement</h3>
-        <ul>
-          {feedback?.areasForImprovement?.map((area, index) => (
-            <li key={index}>{area}</li>
-          ))}
-        </ul>
-      </div>
-
-      <div className="buttons">
+      <div className="flex flex-col sm:flex-row gap-3 mt-8 buttons">
         <Button className="btn-secondary flex-1">
           <Link href="/" className="flex w-full justify-center">
             <p className="text-sm font-semibold text-primary-200 text-center">

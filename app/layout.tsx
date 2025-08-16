@@ -1,4 +1,5 @@
-import { Toaster } from "sonner";
+// import { Toaster } from "sonner";
+import { Toaster } from 'react-hot-toast';
 import type { Metadata } from "next";
 import { Mona_Sans } from "next/font/google";
 
@@ -24,7 +25,8 @@ export default function RootLayout({
       <body className={`${monaSans.className} antialiased pattern`}>
         {children}
 
-        <Toaster />
+        {/* <Toaster /> */}
+         <Toaster position="top-right" />
       </body>
     </html>
   );

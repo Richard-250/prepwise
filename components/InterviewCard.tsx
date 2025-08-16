@@ -1,29 +1,36 @@
+"use client";
+
 import dayjs from "dayjs";
 import Link from "next/link";
 import Image from "next/image";
-
 import { Button } from "./ui/button";
-import DisplayTechIcons from "./DisplayTechIcons";
-
+import DisplayTechIconsClient from "@/components/client/DisplayTechIconsClient";
 import { cn, getRandomInterviewCover } from "@/lib/utils";
-import { getFeedbackByInterviewId } from "@/lib/actions/general.action";
 
-const InterviewCard = async ({
+interface InterviewCardProps {
+  interviewId: string;
+  userId?: string;
+  role: string;
+  type: string;
+  techstack: string[];
+  techIcons: { tech: string; url: string }[]; // Add this prop for resolved tech icons
+  createdAt: string;
+  feedback?: {
+    totalScore?: number;
+    finalAssessment?: string;
+    createdAt?: string;
+  } | null;
+}
+
+export default function InterviewCard({
   interviewId,
-  userId,
   role,
   type,
-  techstack,
+  // techstack,
+  techIcons, // Accept the resolved tech icons
   createdAt,
-}: InterviewCardProps) => {
-  const feedback =
-    userId && interviewId
-      ? await getFeedbackByInterviewId({
-          interviewId,
-          userId,
-        })
-      : null;
-
+  feedback,
+}: InterviewCardProps) {
   const normalizedType = /mix/gi.test(type) ? "Mixed" : type;
 
   const badgeColor =
@@ -38,74 +45,96 @@ const InterviewCard = async ({
   ).format("MMM D, YYYY");
 
   return (
-    <div className="card-border w-[360px] max-sm:w-full min-h-96">
+    <div className="card-border w-full max-w-[360px] min-h-96 hover:transform hover:scale-105 transition-all duration-300 hover:shadow-lg">
       <div className="card-interview">
-        <div>
+        <div className="flex-1">
           {/* Type Badge */}
           <div
             className={cn(
-              "absolute top-0 right-0 w-fit px-4 py-2 rounded-bl-lg",
+              "absolute top-0 right-0 w-fit px-4 py-2 rounded-bl-lg text-xs font-semibold",
               badgeColor
             )}
           >
-            <p className="badge-text ">{normalizedType}</p>
+            <p className="badge-text">{normalizedType}</p>
           </div>
 
-          {/* Cover Image */}
-          <Image
-            src={getRandomInterviewCover()}
-            alt="cover-image"
-            width={90}
-            height={90}
-            className="rounded-full object-fit size-[90px]"
-          />
+          {/* Avatar */}
+          <div className="flex justify-center mb-4">
+            <Image
+              src={getRandomInterviewCover()}
+              alt="cover-image"
+              width={90}
+              height={90}
+              className="rounded-full object-cover size-[90px] ring-2 ring-white/20"
+            />
+          </div>
 
-          {/* Interview Role */}
-          <h3 className="mt-5 capitalize">{role} Interview</h3>
+          {/* Role */}
+          <h3 className="text-xl font-bold text-center capitalize text-white mb-4">
+            {role} Interview
+          </h3>
 
           {/* Date & Score */}
-          <div className="flex flex-row gap-5 mt-3">
-            <div className="flex flex-row gap-2">
-              <Image
-                src="/calendar.svg"
-                width={22}
-                height={22}
-                alt="calendar"
-              />
-              <p>{formattedDate}</p>
+          <div className="flex flex-row justify-center gap-6 mb-4">
+            <div className="flex flex-row items-center gap-2">
+              <Image src="/calendar.svg" width={20} height={20} alt="calendar" />
+              <p className="text-sm text-gray-300">{formattedDate}</p>
             </div>
 
-            <div className="flex flex-row gap-2 items-center">
-              <Image src="/star.svg" width={22} height={22} alt="star" />
-              <p>{feedback?.totalScore || "---"}/100</p>
+            <div className="flex flex-row items-center gap-2">
+              <Image src="/star.svg" width={20} height={20} alt="star" />
+              <p className="text-sm font-semibold text-primary-200">
+                {feedback?.totalScore ?? "---"}/100
+              </p>
             </div>
           </div>
 
-          {/* Feedback or Placeholder Text */}
-          <p className="line-clamp-2 mt-5">
-            {feedback?.finalAssessment ||
-              "You haven't taken this interview yet. Take it now to improve your skills."}
-          </p>
+          {/* Feedback text */}
+          <div className="mb-6">
+            <p className="line-clamp-3 text-sm text-gray-300 leading-relaxed text-center px-2">
+              {feedback?.finalAssessment ||
+                "You haven't taken this interview yet. Take it now to improve your skills and get detailed feedback on your performance."}
+            </p>
+          </div>
         </div>
 
-        <div className="flex flex-row justify-between">
-          <DisplayTechIcons techStack={techstack} />
+        {/* Tech Stack Icons - Now using the client component directly */}
+        <div className="flex flex-col gap-4 mt-auto">
+          <div className="flex justify-center">
+            <DisplayTechIconsClient techIcons={techIcons} />
+          </div>
 
-          <Button className="btn-primary">
-            <Link
-              href={
-                feedback
-                  ? `/interview/${interviewId}/feedback`
-                  : `/interview/${interviewId}`
-              }
-            >
-              {feedback ? "Check Feedback" : "View Interview"}
-            </Link>
-          </Button>
+          {/* Action Button */}
+          <div className="flex justify-center">
+            <Button className="btn-primary w-full max-w-[200px] font-medium">
+              <Link
+                href={
+                  feedback
+                    ? `/interview/${interviewId}/feedback`
+                    : `/interview/${interviewId}`
+                }
+                className="flex items-center justify-center gap-2"
+              >
+                {feedback ? (
+                  <>
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                    Check Feedback
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.828 14.828a4 4 0 01-5.656 0M9 10h6m-3-3v6m-3 7h6a2 2 0 002-2V7a2 2 0 00-2-2H9a2 2 0 00-2 2v11a2 2 0 002 2z" />
+                    </svg>
+                    Start Interview
+                  </>
+                )}
+              </Link>
+            </Button>
+          </div>
         </div>
       </div>
     </div>
   );
-};
-
-export default InterviewCard;
+}

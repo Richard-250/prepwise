@@ -19,15 +19,19 @@ const InterviewDetails = async ({ params }: RouteParams) => {
   const interview = await getInterviewById(id);
   if (!interview) redirect("/");
 
-  const feedback = await getFeedbackByInterviewId({
-    interviewId: id,
-    userId: user?.id!,
-  });
+ if (!user?.id) {
+  throw new Error('User ID is required');
+}
+
+const feedback = await getFeedbackByInterviewId({
+  interviewId: id,
+  userId: user.id,
+});
 
   return (
     <>
       <div className="flex flex-row gap-4 justify-between">
-        <div className="flex flex-row gap-4 items-center max-sm:flex-col">
+        <div className="flex flex-row gap-4 items-center max-sm:flex-col pb-2.5">
           <div className="flex flex-row gap-4 items-center">
             <Image
               src={getRandomInterviewCover()}
@@ -48,7 +52,7 @@ const InterviewDetails = async ({ params }: RouteParams) => {
       </div>
 
       <Agent
-        userName={user?.name!}
+        userName={user?.name}
         userId={user?.id}
         interviewId={id}
         type="interview"

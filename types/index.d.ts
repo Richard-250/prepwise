@@ -99,3 +99,11 @@ interface InterviewFormProps {
 interface TechIconProps {
   techStack: string[];
 }
+
+
+export interface SearchParams {
+  query?: string;
+  sortBy?: string;
+  role?: string;
+  techStack?: string;
+}
