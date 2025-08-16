@@ -3,6 +3,25 @@
 import { auth, db } from "@/firebase/admin";
 import { cookies } from "next/headers";
 
+interface SignInParams {
+  email: string;
+  idToken: string;
+}
+
+interface SignUpParams {
+  uid: string;
+  name: string;
+  email: string;
+  password: string;
+}
+
+interface User {
+  name: string;
+  email: string;
+  id: string;
+  profileURL?: string;
+}
+
 // Session duration (1 week)
 const SESSION_DURATION = 60 * 60 * 24 * 7;
 
@@ -29,72 +48,107 @@ export async function signUp(params: SignUpParams) {
   const { uid, name, email } = params;
 
   try {
-    // check if user exists in db
+    // Check if user exists in database
     const userRecord = await db.collection("users").doc(uid).get();
-    if (userRecord.exists)
+    if (userRecord.exists) {
       return {
         success: false,
         message: "User already exists. Please sign in.",
       };
+    }
 
-    // save user to db
+    // Save user to database
     await db.collection("users").doc(uid).set({
       name,
       email,
-      // profileURL,
-      // resumeURL,
+      createdAt: new Date().toISOString(),
+      // Add other fields as needed
+      // profileURL: "",
+      // resumeURL: "",
     });
 
     return {
       success: true,
       message: "Account created successfully. Please sign in.",
     };
-} catch (error: unknown) {
-  console.error("Error creating user:", error);
+  } catch (error: unknown) {
+    console.error("Error creating user:", error);
 
-  // Type narrowing to check if error has a 'code' property
-  if (
-    typeof error === "object" &&
-    error !== null &&
-    "code" in error &&
-    typeof (error as { code: string }).code === "string"
-  ) {
-    const firebaseError = error as { code: string };
+    // Type narrowing to check if error has a 'code' property
+    if (
+      typeof error === "object" &&
+      error !== null &&
+      "code" in error &&
+      typeof (error as { code: string }).code === "string"
+    ) {
+      const firebaseError = error as { code: string };
 
-    if (firebaseError.code === "auth/email-already-exists") {
-      return {
-        success: false,
-        message: "This email is already in use",
-      };
+      if (firebaseError.code === "auth/email-already-exists") {
+        return {
+          success: false,
+          message: "This email is already in use",
+        };
+      }
     }
+
+    return {
+      success: false,
+      message: "Failed to create account. Please try again.",
+    };
   }
-
-  return {
-    success: false,
-    message: "Failed to create account. Please try again.",
-  };
-}
-
 }
 
 export async function signIn(params: SignInParams) {
   const { email, idToken } = params;
 
   try {
+    // Verify the user exists
     const userRecord = await auth.getUserByEmail(email);
-    if (!userRecord)
+    if (!userRecord) {
       return {
         success: false,
         message: "User does not exist. Create an account.",
       };
+    }
 
+    // Set the session cookie
     await setSessionCookie(idToken);
+
+    return {
+      success: true,
+      message: "Successfully signed in.",
+    };
   } catch (error: unknown) {
     console.error("Sign-in error:", error);
 
+    // Handle specific Firebase Auth errors
+    if (
+      typeof error === "object" &&
+      error !== null &&
+      "code" in error &&
+      typeof (error as { code: string }).code === "string"
+    ) {
+      const firebaseError = error as { code: string };
+
+      switch (firebaseError.code) {
+        case "auth/user-not-found":
+          return {
+            success: false,
+            message: "No account found with this email.",
+          };
+        case "auth/invalid-id-token":
+          return {
+            success: false,
+            message: "Invalid authentication token.",
+          };
+        default:
+          break;
+      }
+    }
+
     return {
       success: false,
-      message: "Failed to log into account. Please try again.",
+      message: "Failed to sign in. Please try again.",
     };
   }
 }
@@ -102,8 +156,12 @@ export async function signIn(params: SignInParams) {
 // Sign out user by clearing the session cookie
 export async function signOut() {
   const cookieStore = await cookies();
-
   cookieStore.delete("session");
+  
+  return {
+    success: true,
+    message: "Successfully signed out.",
+  };
 }
 
 // Get current user from session cookie
@@ -116,20 +174,21 @@ export async function getCurrentUser(): Promise<User | null> {
   try {
     const decodedClaims = await auth.verifySessionCookie(sessionCookie, true);
 
-    // get user info from db
+    // Get user info from database
     const userRecord = await db
       .collection("users")
       .doc(decodedClaims.uid)
       .get();
+    
     if (!userRecord.exists) return null;
 
+    const userData = userRecord.data();
     return {
-      ...userRecord.data(),
+      ...userData,
       id: userRecord.id,
     } as User;
   } catch (error) {
-    console.log(error);
-
+    console.error("Error getting current user:", error);
     // Invalid or expired session
     return null;
   }
